@@ -8,15 +8,30 @@ const STAGES = [
   { id: "kickoff", label: "KickOff", color: "bg-amber-500" },
   { id: "pr-reviews", label: "PR Reviews", color: "bg-rose-500" },
   { id: "ux-reviews", label: "UX Reviews", color: "bg-purple-500" },
-  { id: "technical-reviews", label: "Technical Reviews", color: "bg-cyan-500" },
+  { id: "technical-reviews", label: "Technical/Writer Reviews", color: "bg-cyan-500" },
   { id: "manual-testing", label: "Manual Testing", color: "bg-orange-500" },
   { id: "documentation", label: "Documentation", color: "bg-green-500" },
 ];
 
 const PAIN_POINTS = [
-  "The \"Looming Deadline\" Cascade",
-  "The \"Ghosting\" Reviewer",
-  "The \"Over-the-Wall\" Documentation",
+  {
+    title: "The \"Looming Deadline\" Cascade",
+    setup: "A team member finishes a complex feature on Thursday afternoon for a Friday release cutoff. The PR is huge.",
+    conflict: "A team member doing PR Review finds a logic flaw, which requires a code change. This invalidates the Manual Testing already in progress. Meanwhile, the UX Designer sees the final UI for the first time and realizes the padding is off, and the Technical Writer has requested UI labels change.",
+    result: "A stressful weekend or a delayed release.",
+  },
+  {
+    title: "The \"Ghosting\" Reviewer",
+    setup: "A team member submits three small PRs. They sit in the queue for three days.",
+    conflict: "The designated reviewers are swamped with their own coding tasks and \"don't want to lose their flow.\" By the time they review, the original developer has moved on to a new task and now has to context-switch back to the old one to fix minor comments.",
+    result: "\"PR Rot.\" The code gets harder to merge and keep track of.",
+  },
+  {
+    title: "The \"Over-the-Wall\" Documentation",
+    setup: "The feature is \"Code Complete\" and passes technical/UX reviews. Only then is it handed to the person responsible for documentation/manual testing.",
+    conflict: "The tester finds a bug that the technical reviewer missed because the reviewer only looked at the code, not the functionality. The technical writer realizes a specific edge case isn't covered, but the developer has taken time off and can't answer questions.",
+    result: "The feature is \"done\" but can't be merged because the supporting materials aren't ready.",
+  },
 ];
 
 export function WorkflowStages() {
@@ -75,20 +90,55 @@ export function WorkflowStages() {
     }
   }, [userName]);
 
+  const resetAllVotes = useMutation(({ storage }) => {
+    const votesList = storage.get("stageVotes") as unknown as LiveList<any>;
+    for (let i = 0; i < votesList.length; i++) {
+      const stage = votesList.get(i);
+      stage?.set("agree", 0);
+      stage?.set("disagree", 0);
+      stage?.set("agreedBy", []);
+      stage?.set("disagreedBy", []);
+    }
+  }, []);
+
   return (
     <div className="px-6 py-6 bg-gray-50 border-b-4 border-gray-300">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Where Is Work Getting Stuck?</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-800">Where Is Work Getting Stuck?</h2>
+        <button
+          onClick={resetAllVotes}
+          className="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors"
+        >
+          Reset All Votes
+        </button>
+      </div>
       
       {/* Pain Points Bubbles */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         {PAIN_POINTS.map((painPoint, index) => (
           <div
             key={index}
-            className="relative bg-white border-2 border-indigo-300 rounded-2xl p-6 shadow-md"
+            className="relative bg-white border-2 border-indigo-300 rounded-2xl p-4 shadow-md"
           >
             <div className="absolute -top-2 -left-2 w-4 h-4 bg-white border-2 border-indigo-300 rounded-full"></div>
             <div className="absolute top-4 -left-3 w-3 h-3 bg-white border-2 border-indigo-300 rounded-full"></div>
-            <p className="text-center text-lg font-semibold text-gray-800">{painPoint}</p>
+            <div className="space-y-2">
+              <p className="text-center text-base font-bold text-indigo-700 mb-3">{painPoint.title}</p>
+              <div className="text-left space-y-2 text-xs">
+                <div>
+                  <span className="font-bold text-gray-900">The Setup: </span>
+                  <span className="text-gray-700">{painPoint.setup}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900">The Conflict: </span>
+                  <span className="text-gray-700">{painPoint.conflict}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-gray-900">The Result: </span>
+                  <span className="text-gray-700">{painPoint.result}</span>
+                </div>
+              </div>
+            </div>
           </div>
         ))}
       </div>
