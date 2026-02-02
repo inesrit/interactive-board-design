@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { StickyNote } from "@/app/components/StickyNote";
-import { useStorage, useMutation } from "@liveblocks/react/suspense";
+import { useStorage, useMutation, useSelf } from "@liveblocks/react/suspense";
 import { LiveObject, LiveList } from "@liveblocks/client";
 
 const COLORS = ["#fef08a", "#bfdbfe", "#fbbf24", "#a7f3d0", "#fca5a5", "#e9d5ff", "#fed7aa"];
@@ -18,21 +18,17 @@ type StickyType = LiveObject<{
 export function DiscoveryBoard() {
   const stickies = useStorage((root) => root.stickies) || [];
   const [selectedColor, setSelectedColor] = useState(COLORS[0]);
-  const [userName, setUserName] = useState("");
+  const self = useSelf();
+  const userName = (self?.presence?.name as string | undefined) || "Anonymous";
 
   const addSticky = useMutation(({ storage }) => {
-    if (!userName.trim()) {
-      alert("Please enter your name first");
-      return;
-    }
-    
     const newSticky = new LiveObject({
       id: Date.now().toString(),
       content: "",
       x: Math.random() * 60 + 10,
       y: Math.random() * 60 + 10,
       color: selectedColor,
-      userName: userName.trim(),
+      userName: userName,
     });
     
     const stickiesList = storage.get("stickies") as unknown as LiveList<StickyType>;
@@ -73,13 +69,6 @@ export function DiscoveryBoard() {
           <p className="text-sm text-gray-600 mt-1">Share your current workflow grievances</p>
         </div>
         <div className="flex items-center gap-3">
-          <input
-            type="text"
-            value={userName}
-            onChange={(e) => setUserName(e.target.value)}
-            placeholder="Your name"
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
           <div className="flex gap-2">
             {COLORS.map((color) => (
               <button

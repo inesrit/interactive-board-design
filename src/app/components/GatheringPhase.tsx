@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, ThumbsUp, ThumbsDown, CheckCircle, X } from "lucide-react";
-import { useStorage, useMutation } from "@liveblocks/react/suspense";
+import { useStorage, useMutation, useSelf } from "@liveblocks/react/suspense";
 import { LiveObject, LiveList } from "@liveblocks/client";
 
 export function GatheringPhase() {
@@ -9,6 +9,8 @@ export function GatheringPhase() {
   const [newIdeaText, setNewIdeaText] = useState("");
   const [newActionText, setNewActionText] = useState("");
   const [selectedIdea, setSelectedIdea] = useState<string | null>(null);
+  const self = useSelf();
+  const userName = self?.presence?.name || "Anonymous";
 
   const addIdea = useMutation(({ storage }) => {
     if (newIdeaText.trim()) {
@@ -17,22 +19,65 @@ export function GatheringPhase() {
         text: newIdeaText,
         agree: 0,
         disagree: 0,
+        author: userName,
+        agreedBy: [],
+        disagreedBy: [],
       });
       const ideasList = storage.get("ideas") as unknown as LiveList<any>;
       ideasList.push(newIdea);
       setNewIdeaText("");
     }
-  }, [newIdeaText]);
+  }, [newIdeaText, userName]);
 
   const rateIdea = useMutation(({ storage }, id: string, type: 'agree' | 'disagree') => {
     const ideasList = storage.get("ideas") as unknown as LiveList<any>;
     const index = ideasList.findIndex((idea: any) => idea.get("id") === id);
     if (index !== -1) {
       const idea = ideasList.get(index);
-      const currentValue = idea?.get(type) || 0;
-      idea?.set(type, currentValue + 1);
+      const agreedBy = idea?.get("agreedBy") || [];
+      const disagreedBy = idea?.get("disagreedBy") || [];
+      const agreeCount = idea?.get("agree") || 0;
+      const disagreeCount = idea?.get("disagree") || 0;
+      
+      const clickedAgree = type === 'agree';
+      const hasAgreed = agreedBy.includes(userName);
+      const hasDisagreed = disagreedBy.includes(userName);
+      
+      if (clickedAgree) {
+        if (hasAgreed) {
+          // Remove agree vote
+          idea?.set("agreedBy", agreedBy.filter((u: string) => u !== userName));
+          idea?.set("agree", Math.max(0, agreeCount - 1));
+        } else if (hasDisagreed) {
+          // Change from disagree to agree
+          idea?.set("disagreedBy", disagreedBy.filter((u: string) => u !== userName));
+          idea?.set("disagree", Math.max(0, disagreeCount - 1));
+          idea?.set("agreedBy", [...agreedBy, userName]);
+          idea?.set("agree", agreeCount + 1);
+        } else {
+          // Add agree vote
+          idea?.set("agreedBy", [...agreedBy, userName]);
+          idea?.set("agree", agreeCount + 1);
+        }
+      } else {
+        if (hasDisagreed) {
+          // Remove disagree vote
+          idea?.set("disagreedBy", disagreedBy.filter((u: string) => u !== userName));
+          idea?.set("disagree", Math.max(0, disagreeCount - 1));
+        } else if (hasAgreed) {
+          // Change from agree to disagree
+          idea?.set("agreedBy", agreedBy.filter((u: string) => u !== userName));
+          idea?.set("agree", Math.max(0, agreeCount - 1));
+          idea?.set("disagreedBy", [...disagreedBy, userName]);
+          idea?.set("disagree", disagreeCount + 1);
+        } else {
+          // Add disagree vote
+          idea?.set("disagreedBy", [...disagreedBy, userName]);
+          idea?.set("disagree", disagreeCount + 1);
+        }
+      }
     }
-  }, []);
+  }, [userName]);
 
   const deleteIdea = useMutation(({ storage }, id: string) => {
     const ideasList = storage.get("ideas") as unknown as LiveList<any>;
@@ -118,15 +163,20 @@ export function GatheringPhase() {
               >
                 <div onClick={() => setSelectedIdea(idea.id)}>
                   <p className="text-sm text-gray-800 pr-6">{idea.text}</p>
-                  <div className="flex gap-4 mt-2 text-xs text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <ThumbsUp size={12} className="text-green-600" />
-                      {idea.agree}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ThumbsDown size={12} className="text-red-600" />
-                      {idea.disagree}
-                    </span>
+                  <div className="flex items-center justify-between mt-2">
+                    <div className="flex gap-4 text-xs text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <ThumbsUp size={12} className="text-green-600" />
+                        {idea.agree}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <ThumbsDown size={12} className="text-red-600" />
+                        {idea.disagree}
+                      </span>
+                    </div>
+                    {idea.author && (
+                      <span className="text-xs text-gray-500 italic">— {idea.author}</span>
+                    )}
                   </div>
                 </div>
                 <button
@@ -158,29 +208,68 @@ export function GatheringPhase() {
                     {Array.isArray(ideas) && ideas.find((i: any) => i.id === selectedIdea)?.text}
                   </p>
                   
-                  <div className="flex gap-4 justify-center">
-                    <button
-                      onClick={() => rateIdea(selectedIdea, 'agree')}
-                      className="flex flex-col items-center gap-2 px-8 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <ThumbsUp size={32} />
-                      <span className="font-semibold">Agree</span>
-                      <span className="text-2xl font-bold">
-                        {Array.isArray(ideas) && (ideas.find((i: any) => i.id === selectedIdea) as any)?.agree || 0}
-                      </span>
-                    </button>
+                  {(() => {
+                    const selectedIdeaData = Array.isArray(ideas) && ideas.find((i: any) => i.id === selectedIdea);
+                    const hasAgreed = selectedIdeaData && (selectedIdeaData.agreedBy || []).includes(userName);
+                    const hasDisagreed = selectedIdeaData && (selectedIdeaData.disagreedBy || []).includes(userName);
                     
-                    <button
-                      onClick={() => rateIdea(selectedIdea, 'disagree')}
-                      className="flex flex-col items-center gap-2 px-8 py-4 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                      <ThumbsDown size={32} />
-                      <span className="font-semibold">Disagree</span>
-                      <span className="text-2xl font-bold">
-                        {Array.isArray(ideas) && (ideas.find((i: any) => i.id === selectedIdea) as any)?.disagree || 0}
-                      </span>
-                    </button>
-                  </div>
+                    return (
+                      <>
+                        {(hasAgreed || hasDisagreed) && (
+                          <p className="text-center text-sm text-purple-600 mb-4 font-medium">
+                            {hasAgreed ? "✓ You agreed with this idea" : "✓ You disagreed with this idea"} • Click to change or remove vote
+                          </p>
+                        )}
+                        <div className="flex gap-4 justify-center">
+                          <div className="relative group">
+                            <button
+                              onClick={() => rateIdea(selectedIdea, 'agree')}
+                              className={`flex flex-col items-center gap-2 px-8 py-4 rounded-lg transition-colors ${
+                                hasAgreed 
+                                  ? 'bg-green-700 text-white ring-4 ring-green-300' 
+                                  : 'bg-green-600 text-white hover:bg-green-700'
+                              }`}
+                            >
+                              <ThumbsUp size={32} />
+                              <span className="font-semibold">Agree</span>
+                              <span className="text-2xl font-bold">
+                                {selectedIdeaData?.agree || 0}
+                              </span>
+                            </button>
+                            {selectedIdeaData?.agreedBy && selectedIdeaData.agreedBy.length > 0 && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                                {selectedIdeaData.agreedBy.join(', ')}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="relative group">
+                            <button
+                              onClick={() => rateIdea(selectedIdea, 'disagree')}
+                              className={`flex flex-col items-center gap-2 px-8 py-4 rounded-lg transition-colors ${
+                                hasDisagreed 
+                                  ? 'bg-red-700 text-white ring-4 ring-red-300' 
+                                  : 'bg-red-600 text-white hover:bg-red-700'
+                              }`}
+                            >
+                              <ThumbsDown size={32} />
+                              <span className="font-semibold">Disagree</span>
+                              <span className="text-2xl font-bold">
+                                {selectedIdeaData?.disagree || 0}
+                              </span>
+                            </button>
+                            {selectedIdeaData?.disagreedBy && selectedIdeaData.disagreedBy.length > 0 && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50">
+                                {selectedIdeaData.disagreedBy.join(', ')}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px border-4 border-transparent border-t-gray-900"></div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (

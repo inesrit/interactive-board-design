@@ -6,6 +6,7 @@ declare global {
     // Each user's Presence, for useMyPresence, useOthers, etc.
     Presence: {
       cursor: { x: number; y: number } | null;
+      name?: string;
     };
 
     // The Storage tree for the room, for useMutation, useStorage, etc.
@@ -23,19 +24,26 @@ declare global {
         text: string;
         agree: number;
         disagree: number;
+        author: string;
+        agreedBy: string[];
+        disagreedBy: string[];
       }>>;
       actions: LiveList<LiveObject<{
         id: string;
         text: string;
         completed: boolean;
       }>>;
-      preDiscoveryRows: LiveList<LiveObject<{
-        id: number;
-        name: string;
-        steps: LiveList<LiveObject<{
-          id: string;
-          text: string;
-        }>>;
+      preDiscoveryBoxes: LiveList<LiveObject<{
+        id: string;
+        text: string;
+      }>>;
+      preDiscoveryOrder: LiveList<string>;
+      stageVotes: LiveList<LiveObject<{
+        id: string;
+        agree: number;
+        disagree: number;
+        agreedBy: string[];
+        disagreedBy: string[];
       }>>;
     };
 

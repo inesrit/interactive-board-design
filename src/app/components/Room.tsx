@@ -31,22 +31,30 @@ export function Room({ children }: { children: ReactNode }) {
         id={roomId}
         initialPresence={{
           cursor: null,
+          name: undefined,
         }}
         initialStorage={{
           stickies: new LiveList([]),
           ideas: new LiveList([]),
           actions: new LiveList([]),
-          preDiscoveryRows: new LiveList(
-            Array.from({ length: 7 }, (_, i) => 
-              new LiveObject({
-                id: i + 1,
-                name: "",
-                steps: new LiveList([
-                  new LiveObject({ id: `${i + 1}-1`, text: "" })
-                ])
-              })
-            )
-          ),
+          preDiscoveryBoxes: new LiveList([
+            new LiveObject({ id: "box-1", text: "Gather requirements from stakeholders" }),
+            new LiveObject({ id: "box-2", text: "Create technical design document" }),
+            new LiveObject({ id: "box-3", text: "Implement code and unit tests" }),
+            new LiveObject({ id: "box-4", text: "Submit PR for team review" }),
+            new LiveObject({ id: "box-5", text: "Deploy to production after approval" }),
+          ]),
+          preDiscoveryOrder: new LiveList([]),
+          stageVotes: new LiveList([
+            { id: "refinement", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "investigation", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "kickoff", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "pr-reviews", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "ux-reviews", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "technical-reviews", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "manual-testing", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+            { id: "documentation", agree: 0, disagree: 0, agreedBy: [], disagreedBy: [] },
+          ].map(stage => new LiveObject(stage))),
         }}
       >
         <ClientSideSuspense fallback={<div className="flex items-center justify-center h-screen">Loading…</div>}>

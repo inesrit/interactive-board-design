@@ -39,6 +39,7 @@ export function Cursors() {
         }
 
         const cursor = presence.cursor as { x: number; y: number };
+        const userName = (presence.name as string | undefined) || `User ${connectionId.toString().slice(0, 4)}`;
 
         return (
           <div
@@ -56,12 +57,12 @@ export function Cursors() {
               }}
             />
             <div
-              className="px-2 py-1 text-xs text-white rounded-md ml-5 -mt-1"
+              className="px-2 py-1 text-xs text-white rounded-md ml-5 -mt-1 whitespace-nowrap"
               style={{
                 backgroundColor: getColorForConnection(connectionId),
               }}
             >
-              User {connectionId.toString().slice(0, 4)}
+              {userName}
             </div>
           </div>
         );
