@@ -184,7 +184,7 @@ export function PreDiscoveryPhase() {
         <div
           onDrop={handleDropOnPlaceholder}
           onDragOver={(e) => handleDragOverPlaceholder(e)}
-          className="min-h-32 p-4 border-2 border-dashed border-purple-400 rounded-lg bg-white/50 flex items-center gap-3 overflow-x-auto"
+          className="min-h-32 p-4 border-2 border-dashed border-purple-400 rounded-lg bg-white/50 flex flex-wrap items-center gap-3"
         >
           {orderedBoxes.length === 0 ? (
             <p className="text-gray-400 text-sm">Drop boxes here to create your ordered workflow</p>
