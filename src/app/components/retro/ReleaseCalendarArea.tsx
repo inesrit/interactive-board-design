@@ -77,32 +77,83 @@ function parseCSV(text: string): CsvRow[] {
 }
 
 // ─── Drawing Canvas ───────────────────────────────────────────────────────────
+// Stroke type (matches Liveblocks storage)
+interface CanvasStroke {
+  id: string;
+  personKey: string;
+  color: string;
+  tool: string;
+  pts: string; // JSON-encoded [{x,y}...]
+}
+
 interface DrawingCanvasProps { personColor: string; personLabel: string; }
 
-const DrawingCanvas = memo(function DrawingCanvas({ personColor, personLabel }: DrawingCanvasProps) {
+function DrawingCanvas({ personColor, personLabel }: DrawingCanvasProps) {
   void React;
   const canvasRef    = useRef<HTMLCanvasElement>(null);
   const isDrawingRef = useRef(false);
+  const currentPtsRef = useRef<{ x: number; y: number }[]>([]);
   const lastPosRef   = useRef({ x: 0, y: 0 });
   const [tool, setTool] = useState<"pencil" | "eraser">("pencil");
   const toolRef = useRef<"pencil" | "eraser">("pencil");
   toolRef.current = tool;
 
+  // All stored strokes for this person's panel
+  type StoredStroke = { id: string; personKey: string; color: string; tool: string; pts: string };
+  const allStrokes = (useStorage(root => root.retroCalendarStrokes) ?? []) as unknown as readonly StoredStroke[];
+  const panelStrokes = allStrokes.filter(s => s.personKey === personLabel);
+
+  const addStroke = useMutation(({ storage }, stroke: CanvasStroke) => {
+    const list = storage.get("retroCalendarStrokes") as any;
+    list.push(new LiveObject(stroke));
+  }, []);
+
+  const clearStrokes = useMutation(({ storage }) => {
+    const list = storage.get("retroCalendarStrokes") as any;
+    for (let i = list.length - 1; i >= 0; i--) {
+      if (list.get(i).get("personKey") === personLabel) list.delete(i);
+    }
+  }, [personLabel]);
+
+  // ── helpers ──────────────────────────────────────────────────────────────
   const paintBackground = (ctx: CanvasRenderingContext2D, w: number, h: number) => {
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, w, h);
     ctx.strokeStyle = "#eeeeee";
     ctx.lineWidth = 0.5;
-    for (let y = 28; y < h; y += 28) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    for (let gy = 28; gy < h; gy += 28) {
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke();
     }
   };
 
+  const replayStrokes = useCallback((ctx: CanvasRenderingContext2D, strokes: readonly StoredStroke[], inProgress?: { pts: { x: number; y: number }[]; tool: string }) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    paintBackground(ctx, canvas.width, canvas.height);
+    const renderStroke = (pts: { x: number; y: number }[], t: string, col: string) => {
+      if (pts.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.strokeStyle = t === "eraser" ? "#ffffff" : col;
+      ctx.lineWidth   = t === "eraser" ? 18 : 2.5;
+      ctx.lineCap     = "round";
+      ctx.lineJoin    = "round";
+      ctx.stroke();
+    };
+    strokes.forEach(s => {
+      try { renderStroke(JSON.parse(s.pts), s.tool, s.color); } catch { /* ignore */ }
+    });
+    if (inProgress) renderStroke(inProgress.pts, inProgress.tool, personColor);
+  }, [personColor]);
+
+  // Re-render when remote strokes change
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
-    if (ctx && canvas) paintBackground(ctx, canvas.width, canvas.height);
-  }, []);
+    if (!ctx) return;
+    replayStrokes(ctx, panelStrokes, isDrawingRef.current ? { pts: currentPtsRef.current, tool: toolRef.current } : undefined);
+  }, [panelStrokes, replayStrokes]);
 
   const getPos = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const canvas = canvasRef.current;
@@ -114,24 +165,33 @@ const DrawingCanvas = memo(function DrawingCanvas({ personColor, personLabel }: 
     };
   };
 
-  const drawSegment = (from: { x: number; y: number }, to: { x: number; y: number }, t: "pencil" | "eraser") => {
+  const drawSegmentLocal = (from: { x: number; y: number }, to: { x: number; y: number }, t: "pencil" | "eraser") => {
     const ctx = canvasRef.current?.getContext("2d");
     if (!ctx) return;
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y);
     ctx.strokeStyle = t === "eraser" ? "#ffffff" : personColor;
     ctx.lineWidth   = t === "eraser" ? 18 : 2.5;
-    ctx.lineCap     = "round";
-    ctx.lineJoin    = "round";
-    ctx.stroke();
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.stroke();
   };
 
+  const commitStroke = useCallback(() => {
+    const pts = currentPtsRef.current;
+    if (pts.length >= 2) {
+      addStroke({
+        id: Date.now().toString() + Math.random().toString(36).slice(2),
+        personKey: personLabel,
+        color: personColor,
+        tool: toolRef.current,
+        pts: JSON.stringify(pts),
+      });
+    }
+    currentPtsRef.current = [];
+    isDrawingRef.current = false;
+  }, [addStroke, personLabel, personColor]);
+
   const handleClear = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (ctx && canvas) paintBackground(ctx, canvas.width, canvas.height);
-  }, []);
+    clearStrokes();
+  }, [clearStrokes]);
 
   return (
     <div className="flex flex-col" style={{ width: COL_CANVAS, minWidth: COL_CANVAS }}>
@@ -167,19 +227,25 @@ const DrawingCanvas = memo(function DrawingCanvas({ personColor, personLabel }: 
         width={CANVAS_W}
         height={CANVAS_H}
         style={{ width: "100%", display: "block", cursor: tool === "eraser" ? "cell" : "crosshair" }}
-        onMouseDown={(e) => { isDrawingRef.current = true; lastPosRef.current = getPos(e); }}
+        onMouseDown={(e) => {
+          isDrawingRef.current = true;
+          const pos = getPos(e);
+          currentPtsRef.current = [pos];
+          lastPosRef.current = pos;
+        }}
         onMouseMove={(e) => {
           if (!isDrawingRef.current) return;
           const pos = getPos(e);
-          drawSegment(lastPosRef.current, pos, toolRef.current);
+          drawSegmentLocal(lastPosRef.current, pos, toolRef.current);
+          currentPtsRef.current.push(pos);
           lastPosRef.current = pos;
         }}
-        onMouseUp={() => { isDrawingRef.current = false; }}
-        onMouseLeave={() => { isDrawingRef.current = false; }}
+        onMouseUp={commitStroke}
+        onMouseLeave={commitStroke}
       />
     </div>
   );
-});
+}
 
 // ─── Draggable Image ──────────────────────────────────────────────────────────
 interface DraggableImageProps {

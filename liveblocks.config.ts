@@ -68,6 +68,13 @@ declare global {
         x: number;
         y: number;
       }>>;
+      retroCalendarStrokes: LiveList<LiveObject<{
+        id: string;
+        personKey: string;
+        color: string;
+        tool: string;
+        pts: string;
+      }>>;
       retroProcessVotes: LiveList<LiveObject<{
         id: string;
         groupId: string;

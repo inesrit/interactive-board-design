@@ -36,6 +36,7 @@ export function ReleaseRetroRoom({ children }: { children: ReactNode }) {
           retroStickies: new LiveList([]),
           retroCalendarNotes: new LiveList([]),
           retroCalendarImages: new LiveList([]),
+          retroCalendarStrokes: new LiveList([]),
           retroProcessVotes: new LiveList([]),
         }}
       >
