@@ -158,10 +158,11 @@ function DrawingCanvas({ personColor, personLabel }: DrawingCanvasProps) {
   const getPos = (e: React.MouseEvent<HTMLCanvasElement>): { x: number; y: number } => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (canvas.clientWidth || canvas.width);
+    const scaleY = canvas.height / (canvas.clientHeight || canvas.height);
     return {
-      x: ((e.clientX - rect.left)  / rect.width)  * CANVAS_W,
-      y: ((e.clientY - rect.top)   / rect.height) * CANVAS_H,
+      x: e.nativeEvent.offsetX * scaleX,
+      y: e.nativeEvent.offsetY * scaleY,
     };
   };
 
@@ -226,7 +227,7 @@ function DrawingCanvas({ personColor, personLabel }: DrawingCanvasProps) {
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
-        style={{ width: "100%", display: "block", cursor: tool === "eraser" ? "cell" : "crosshair" }}
+        style={{ width: COL_CANVAS, height: CANVAS_H, display: "block", cursor: tool === "eraser" ? "cell" : "crosshair" }}
         onMouseDown={(e) => {
           isDrawingRef.current = true;
           const pos = getPos(e);
