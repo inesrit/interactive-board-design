@@ -25,8 +25,14 @@ export default function App() {
           }}
         >
           {/* Title Section */}
-          <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b-4 border-indigo-700" style={{ pointerEvents: "auto" }}>
+          <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 border-b-4 border-indigo-700 flex items-center justify-between" style={{ pointerEvents: "auto" }}>
             <h1 className="text-2xl font-bold text-white">Mitigating Delays</h1>
+            <a
+              href="/retro"
+              className="text-sm font-medium text-indigo-200 hover:text-white underline underline-offset-2 transition-colors"
+            >
+              → Go to Release Retro Board
+            </a>
           </div>
 
           {/* Workflow Stages Section */}
