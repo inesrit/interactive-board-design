@@ -45,6 +45,38 @@ declare global {
         agreedBy: string[];
         disagreedBy: string[];
       }>>;
+      // Release Retro Board storage
+      retroStickies: LiveList<LiveObject<{
+        id: string;
+        content: string;
+        x: number;
+        y: number;
+        color: string;
+        userName: string;
+        zone: string;
+      }>>;
+      retroCalendarNotes: LiveList<LiveObject<{
+        id: string;
+        row: number;
+        col: string;
+        content: string;
+      }>>;
+      retroCalendarImages: LiveList<LiveObject<{
+        id: string;
+        section: string;
+        dataUrl: string;
+        x: number;
+        y: number;
+      }>>;
+      retroProcessVotes: LiveList<LiveObject<{
+        id: string;
+        groupId: string;
+        itemIndex: number;
+        likes: number;
+        dislikes: number;
+        likedBy: string[];
+        dislikedBy: string[];
+      }>>;
     };
 
     // Custom user info set when authenticating with a secret key
